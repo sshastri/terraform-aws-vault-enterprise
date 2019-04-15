@@ -32,6 +32,7 @@ variable "ssm_consul_tls_ca_parameter" {}
 variable "ssm_consul_tls_cert_parameter" {}
 variable "ssm_consul_tls_key_parameter" {}
 variable "ssm_consul_encrypt_key_parameter" {}
+variable "consul_verify_server_hostname" {}
 
 #############
 # Providers #
@@ -71,6 +72,7 @@ module "consul" {
   ssm_encrypt_key          = "${var.ssm_consul_encrypt_key_parameter}"
   ssh_public_key           = "${var.consul_ssh_public_key}"
   ssm_parameter_path       = "${var.ssm_parameter_path}"
+  verify_server_hostname   = "${var.consul_verify_server_hostname}"
 }
 
 # module "vault" {
