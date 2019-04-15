@@ -5,6 +5,7 @@
 variable "consul_ssh_public_key" {}
 variable "vault_ssh_public_key" {}
 variable "environment" {}
+variable "region" {}
 variable "consul_private_subnet_ids" {
     type = "list"
 }
