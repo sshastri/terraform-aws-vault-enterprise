@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
-readonly CONSUL_USER="${CONSUL_SERVICE_USER:-consul}"
-readonly CONSUL_ETC_DIR="${CONSUL_ETC_DIR:-/etc/consul}"
-readonly CONSUL_CFG_DIR="${CONSUL_CFG_DIR:-/etc/consul.d}"
-readonly CONSUL_LIB_DIR="${CONSUL_LIB_DIR:-/var/lib/consul}"
-readonly CONSUL_INSTALL_DIR="${CONSUL_INSTALL_DIR:-/usr/bin}"
+readonly CONSUL_USER="consul"
+readonly CONSUL_CFG_DIR="/etc/consul"
+readonly CONSUL_CERTS_DIR="$CONSUL_CFG_DIR/certs"
+readonly CONSUL_INSTALL_DIR="/opt/consul"
+readonly CONSUL_BIN_DIR="$CONSUL_INSTALL_DIR/bin"
+readonly CONSUL_SCRIPTS_DIR="$CONSUL_INSTALL_DIR/scripts"
+readonly CONSUL_VAR_DIR="/var/opt/consul"
+readonly CONSUL_DATA_DIR="$CONSUL_VAR_DIR/consul"
 readonly TMP_DIR="/tmp/consul"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "$0")"
@@ -42,28 +45,30 @@ function user_exists {
 function create_user {
   local -r func="create_user"
   local -r username="$CONSUL_USER"
-  local -r etc_dir="$CONSUL_ETC_DIR"
+  local -r install_dir="$CONSUL_INSTALL_DIR"
 
   if $(user_exists "$username"); then
     log "INFO" $func "User $username already exists..."
   else
     log "INFO" $func "Creating user $username..."
-    useradd --system --home "$etc_dir" --shell /bin/false "$username"
+    useradd --system --home "$install_dir" --shell /bin/false "$username"
   fi
 }
 
 function create_directories {
   local -r func="create_directories"
   local -r username="$CONSUL_USER"
-  local -r etc_dir="$CONSUL_ETC_DIR"
-  local -r certs_dir="$CONSUL_ETC_DIR/certs"
   local -r config_dir="$CONSUL_CFG_DIR"
-  local -r opt_dir="$CONSUL_LIB_DIR"
-  local -r data_dir="$CONSUL_LIB_DIR/data"
-  local -r scripts_dir="$CONSUL_LIB_DIR/scripts"
+  local -r certs_dir="$CONSUL_CERTS_DIR"
+  local -r config_dir="$CONSUL_CFG_DIR"
+  local -r install_dir="$CONSUL_INSTALL_DIR"
+  local -r bin_dir="$CONSUL_BIN_DIR"
+  local -r var_dir="$CONSUL_VAR_DIR"
+  local -r scripts_dir="$CONSUL_SCRIPTS_DIR"
+  local -r data_dir="$CONSUL_DATA_DIR"
 
   log "INFO" $func "Creating Consul directories..."
-  for i in "$etc_dir" "$certs_dir" "$config_dir" "$opt_dir" "$data_dir" "$scripts_dir"
+  for i in "$config_dir" "$certs_dir" "$install_dir" "$bin_dir" "$scripts_dir" "$var_dir" "$data_dir"
   do
     if [ ! -d "$i" ]
     then
@@ -113,15 +118,14 @@ EOP
 
 function install_consul {
   local -r func="install_consul"
-  local -r install_dir="$CONSUL_INSTALL_DIR"
+  local -r bin_dir="$CONSUL_BIN_DIR"
   local -r tmp_dir="$TMP_DIR"
   local -r username="$CONSUL_USER"
-  local -r etc_dir="$CONSUL_ETC_DIR"
   local -r config_dir="$CONSUL_CFG_DIR"
 
   log "INFO" $func "Installing Consul..."
   cd "$install_dir" && unzip -qu "$tmp_dir/consul.zip"
-  chown root:root consul
+  chown root:consul consul
   chmod 0755 consul
 
   cat > /etc/systemd/system/consul.service <<EOF
@@ -130,12 +134,12 @@ Description="HashiCorp Consul - A service mesh solution"
 Documentation=https://www.consul.io/
 Requires=network-online.target
 After=network-online.target
-ConditionFileNotEmpty=${etc_dir}/config.hcl
+ConditionFileNotEmpty=${config_dir}/config.hcl
 
 [Service]
 User=${username}
 Group=${username}
-ExecStart=${CONSUL_INSTALL_DIR}/consul agent -config-file ${etc_dir}/config.hcl -config-dir=${config_dir}
+ExecStart=${CONSUL_INSTALL_DIR}/consul agent -config-file ${config_dir}/config.hcl
 ExecReload=${CONSUL_INSTALL_DIR}/consul reload
 KillMode=process
 Restart=on-failure
@@ -150,8 +154,8 @@ EOF
 
 function configure_consul {
   local -r func="configure_consul"
-  local -r certs_dir="$CONSUL_ETC_DIR/certs"
-  local -r etc_dir="$CONSUL_ETC_DIR"
+  local -r certs_dir="$CONSUL_CERTS_DIR"
+  local -r etc_dir="$CONSUL_CFG_DIR"
   local -r username="$CONSUL_USER"
   local -r aws_region="$AWS_REGION"
   local -r net_int=$(ls -1 /sys/class/net | grep -v lo | sort -r | head -n 1)
@@ -169,7 +173,7 @@ function configure_consul {
 # ${etc_dir}/config.hcl
 datacenter              = "${datacenter}"
 node_name               = "${INSTANCE_ID}"
-data_dir                = "${CONSUL_LIB_DIR}/data"
+data_dir                = "${CONSUL_DATA_DIR}/data"
 ui                      = ${ui}
 advertise_addr          = "${ip_addr}"
 server                  = ${server}
@@ -199,7 +203,7 @@ EOF
 function configure_tls {
   local -r func="configure_tls"
   local -r username="$CONSUL_USER"
-  local -r etc_dir="$CONSUL_ETC_DIR"
+  local -r etc_dir="$CONSUL_CFG_DIR"
 
   log "INFO" $func "Configuring Consul TLS..."
   assert_not_empty "-ssm-tls-cert" "$ssm_tls_cert"

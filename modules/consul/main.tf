@@ -46,17 +46,18 @@ data "template_file" "consul_user_data" {
   template = "${file("${path.module}/templates/user_data.sh.tpl")}"
 
   vars {
-    packerized      = "${var.packerized}"
-    s3_bucket       = "${var.s3_bucket}"
-    s3_path         = "${var.s3_path}"
-    bootstrap_count = "${var.cluster_size}"
-    tag_key         = "${var.cluster_tag_key}"
-    tag_value       = "${var.cluster_tag_value}"
-    consul_zip      = "${var.consul_zip}"
-    ssm_encrypt_key = "${var.ssm_encrypt_key}"
-    ssm_tls_ca      = "${var.ssm_tls_ca}"
-    ssm_tls_cert    = "${var.ssm_tls_cert}"
-    ssm_tls_key     = "${var.ssm_tls_key}"
+    packerized             = "${var.packerized}"
+    s3_bucket              = "${var.s3_bucket}"
+    s3_path                = "${var.s3_path}"
+    bootstrap_count        = "${var.cluster_size}"
+    tag_key                = "${var.cluster_tag_key}"
+    tag_value              = "${var.cluster_tag_value}"
+    consul_zip             = "${var.consul_zip}"
+    ssm_encrypt_key        = "${var.ssm_encrypt_key}"
+    ssm_tls_ca             = "${var.ssm_tls_ca}"
+    ssm_tls_cert           = "${var.ssm_tls_cert}"
+    ssm_tls_key            = "${var.ssm_tls_key}"
+    verify_server_hostname = "${var.verify_server_hostname}"
   }
 }
 

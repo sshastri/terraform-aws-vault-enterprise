@@ -65,3 +65,7 @@ variable "ssm_tls_key" {
 variable "ssm_kms_key" {}
 
 variable "ssh_public_key" {}
+variable "verify_server_hostname" {
+  description = "Consul configuration - Verify if consul service fqdn matches hostname (<node_name>.<datacenter>.consul) in certificate"
+  default = true
+}

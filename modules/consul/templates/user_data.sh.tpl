@@ -58,7 +58,7 @@ function install_dependencies {
 function copy_artifacts {
   local -r func="copy_artifacts"
 
-  if [ ! -d $TMP_PATH ]
+  if [ ! -d "$TMP_PATH" ]
   then
     mkdir $TMP_PATH
   fi
@@ -71,8 +71,13 @@ function copy_artifacts {
 }
 
 
-opts="-server -bootstrap-expect ${bootstrap_count} -datacenter vault -tag-key ${tag_key} -tag-value ${tag_value} -enable-tls -ssm-encrypt-key ${ssm_encrypt_key} -ssm-tls-ca ${ssm_tls_ca} -ssm-tls-cert ${ssm_tls_cert} -ssm-tls-key ${ssm_tls_key}"
-if [ ${packerized} == 0 ]
+opts="-server -bootstrap-expect ${bootstrap_count} -tag-key ${tag_key} -tag-value ${tag_value} -enable-tls -ssm-encrypt-key ${ssm_encrypt_key} -ssm-tls-ca ${ssm_tls_ca} -ssm-tls-cert ${ssm_tls_cert} -ssm-tls-key ${ssm_tls_key}"
+if [ ${verify_server_hostname} -ne 0 ]
+then
+  opts="$opts -verify-server-hostname"
+fi
+
+if [ ${packerized} -eq 0 ]
 then
   install_dependencies
   copy_artifacts
