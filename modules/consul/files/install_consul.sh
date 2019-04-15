@@ -124,9 +124,10 @@ function install_consul {
   local -r config_dir="$CONSUL_CFG_DIR"
 
   log "INFO" $func "Installing Consul..."
-  cd "$install_dir" && unzip -qu "$tmp_dir/consul.zip"
-  chown root:consul consul
+  cd "$bin_dir" && unzip -qu "$tmp_dir/consul.zip"
+  chown $username:$username consul
   chmod 0755 consul
+  ln -s "$bin_dir/consul" /usr/bin/consul
 
   cat > /etc/systemd/system/consul.service <<EOF
 [Unit]
@@ -139,8 +140,8 @@ ConditionFileNotEmpty=${config_dir}/config.hcl
 [Service]
 User=${username}
 Group=${username}
-ExecStart=${CONSUL_INSTALL_DIR}/consul agent -config-file ${config_dir}/config.hcl
-ExecReload=${CONSUL_INSTALL_DIR}/consul reload
+ExecStart=${CONSUL_BIN_DIR}/consul agent -config-file ${config_dir}/config.hcl
+ExecReload=${CONSUL_BIN_DIR}/consul reload
 KillMode=process
 Restart=on-failure
 LimitNOFILE=65536
@@ -162,10 +163,6 @@ function configure_consul {
   local -r ip_addr=$(ip address show $net_int | awk '{print $2}' | egrep -o '([0-9]+\.){3}[0-9]+')
   local -r encrypt_key="$(get_ssm_parameter ${ssm_encrypt_key})"
 
-  get_ssm_parameter ${ssm_tls_ca} | base64 -d > "$certs_dir/ca.pem"
-  chown $username:$username "$certs_dir/ca.pem"
-  chmod 0640 "$certs_dir/ca.pem"
-
   log "INFO" $func "Configuring consul..."
   log "INFO" $func "Creating Consul configuration file..."
 
@@ -182,8 +179,7 @@ retry_join              = ["provider=aws tag_key=${tag_key} tag_value=${tag_valu
 encrypt                 = "${encrypt_key}"
 encrypt_verify_incoming = true
 encrypt_verify_outgoing = true
-ca_file                 = "${certs_dir}/ca.pem"
-verify_incoming         = true
+verify_incoming         = false
 verify_outgoing         = true
 verify_server_hostname  = ${verify_server_hostname}
 
@@ -206,14 +202,26 @@ function configure_tls {
   local -r etc_dir="$CONSUL_CFG_DIR"
 
   log "INFO" $func "Configuring Consul TLS..."
+  assert_not_empty "-ssm-tls-ca" "$ssm_tls_ca"
   assert_not_empty "-ssm-tls-cert" "$ssm_tls_cert"
   assert_not_empty "-ssm-tls-key" "$ssm_tls_key"
+
+  if [ ! -f "$certs_dir/ca.pem" ]
+  then
+    get_ssm_parameter ${ssm_tls_ca} | base64 -d > "$certs_dir/ca.pem"
+    chown $username:$username "$certs_dir/ca.pem"
+    chmod 0640 "$certs_dir/ca.pem"
+    log "INFO" $func "The TLS CA chain file path $certs_dir/ca.pem has been created..."
+  else
+    log "INFO" $func "The TLS CA chain file path $certs_dir/ca.pem already exists. Doing nothing..."
+  fi
 
   if [ ! -f "$certs_dir/consul.pem" ]
   then
     get_ssm_parameter ${ssm_tls_cert} | base64 -d > "$certs_dir/consul.pem"
     chown $username:$username "$certs_dir/consul.pem"
     chmod 0640 "$certs_dir/consul.pem"
+    log "INFO" $func "The TLS cert file path $certs_dir/consul.pem has been created..."
   else
     log "INFO" $func "The TLS cert file path $certs_dir/consul.pem already exists. Doing nothing..."
   fi
@@ -223,6 +231,7 @@ function configure_tls {
     get_ssm_parameter ${ssm_tls_key} | base64 -d > "$certs_dir/consul.key"
     chown $username:$username "$certs_dir/consul.key"
     chmod 0600 "$certs_dir/consul.key"
+    log "INFO" $func "The TLS key file path $certs_dir/consul.key has been created..."
   else
     log "INFO" $func "The TLS cert file path $certs_dir/consul.key already exists. Doing nothing..."
   fi
@@ -230,6 +239,7 @@ function configure_tls {
   log "INFO" $func "Updating Consul configuration file..."
   cat <<EOF >> "$etc_dir/config.hcl"
 
+ca_file   = "${certs_dir}/ca.pem"
 cert_file = "${certs_dir}/consul.pem"
 key_file  = "${certs_dir}/consul.key"
 

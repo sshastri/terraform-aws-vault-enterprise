@@ -85,3 +85,5 @@ then
 else
   /opt/consul/scripts/install.sh -configure $opts
 fi
+
+# ${install_script_hash}

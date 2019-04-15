@@ -5,7 +5,6 @@ terraform {
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
-
 resource "aws_key_pair" "consul" {
   key_name   = "consul-server-${var.cluster_name}"
   public_key = "${var.ssh_public_key}"
@@ -42,6 +41,14 @@ resource "aws_instance" "consul" {
   tags = "${merge(map("Name", "consul-${var.cluster_name}-${count.index}"), map("${var.cluster_tag_key}", "${var.cluster_tag_value}"))}"
 }
 
+resource "random_id" "install_script" {
+  keepers = {
+    hash = "${sha256(file("${path.module}/files/install_consul.sh"))}"
+  }
+
+  byte_length = 8
+}
+
 data "template_file" "consul_user_data" {
   template = "${file("${path.module}/templates/user_data.sh.tpl")}"
 
@@ -58,6 +65,7 @@ data "template_file" "consul_user_data" {
     ssm_tls_cert           = "${var.ssm_tls_cert}"
     ssm_tls_key            = "${var.ssm_tls_key}"
     verify_server_hostname = "${var.verify_server_hostname}"
+    install_script_hash    = "${(var.packerized ? random_id.install_script.hex : "" )}"
   }
 }
 
