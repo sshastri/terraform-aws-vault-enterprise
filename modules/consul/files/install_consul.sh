@@ -3,7 +3,7 @@
 readonly CONSUL_USER="${CONSUL_SERVICE_USER:-consul}"
 readonly CONSUL_ETC_DIR="${CONSUL_ETC_DIR:-/etc/consul}"
 readonly CONSUL_CFG_DIR="${CONSUL_CFG_DIR:-/etc/consul.d}"
-readonly CONSUL_OPT_DIR="${CONSUL_LIB_DIR:-/var/opt/consul}"
+readonly CONSUL_LIB_DIR="${CONSUL_LIB_DIR:-/var/lib/consul}"
 readonly CONSUL_INSTALL_DIR="${CONSUL_INSTALL_DIR:-/usr/bin}"
 readonly TMP_DIR="/tmp/consul"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -58,9 +58,9 @@ function create_directories {
   local -r etc_dir="$CONSUL_ETC_DIR"
   local -r certs_dir="$CONSUL_ETC_DIR/certs"
   local -r config_dir="$CONSUL_CFG_DIR"
-  local -r opt_dir="$CONSUL_OPT_DIR"
-  local -r data_dir="$CONSUL_OPT_DIR/data"
-  local -r scripts_dir="$CONSUL_OPT_DIR/scripts"
+  local -r opt_dir="$CONSUL_LIB_DIR"
+  local -r data_dir="$CONSUL_LIB_DIR/data"
+  local -r scripts_dir="$CONSUL_LIB_DIR/scripts"
 
   log "INFO" $func "Creating Consul directories..."
   for i in "$etc_dir" "$certs_dir" "$config_dir" "$opt_dir" "$data_dir" "$scripts_dir"
@@ -169,7 +169,7 @@ function configure_consul {
 # ${etc_dir}/config.hcl
 datacenter              = "${datacenter}"
 node_name               = "${INSTANCE_ID}"
-data_dir                = "${CONSUL_OPT_DIR}/data"
+data_dir                = "${CONSUL_LIB_DIR}/data"
 ui                      = ${ui}
 advertise_addr          = "${ip_addr}"
 server                  = ${server}
