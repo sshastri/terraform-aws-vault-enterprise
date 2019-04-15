@@ -70,6 +70,7 @@ function copy_artifacts {
   aws s3 cp "s3://${s3_bucket}/${s3_path}/${consul_zip}" "$TMP_PATH/consul.zip"
 }
 
+
 opts="-server -bootstrap-expect ${bootstrap_count} -datacenter vault -tag-key ${tag_key} -tag-value ${tag_value} -enable-tls -ssm-encrypt-key ${ssm_encrypt_key} -ssm-tls-ca ${ssm_tls_ca} -ssm-tls-cert ${ssm_tls_cert} -ssm-tls-key ${ssm_tls_key}"
 if [ ${packerized} == 0 ]
 then

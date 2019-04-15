@@ -173,7 +173,7 @@ data_dir                = "${CONSUL_LIB_DIR}/data"
 ui                      = ${ui}
 advertise_addr          = "${ip_addr}"
 server                  = ${server}
-bootstrap_expect        = ${bootstrap}
+bootstrap_expect        = ${bootstrap_expect}
 retry_join              = ["provider=aws tag_key=${tag_key} tag_value=${tag_value}"]
 encrypt                 = "${encrypt_key}"
 encrypt_verify_incoming = true
