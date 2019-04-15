@@ -77,6 +77,16 @@ function create_directories {
       chown "$username":"$username" "$i"
     fi
   done
+
+  for i in "$install_dir" "$bin_dir" "$scripts_dir"
+  do
+    if [ ! -d "$i" ]
+    then
+      mkdir -p "$i"
+      chmod 0755 "$i"
+      chown "$username":"$username" "$i"
+    fi
+  done
 }
 
 function get_ssm_parameter {
@@ -254,7 +264,7 @@ EOF
 install=0
 config=0
 server="false"
-verify_server_hostname="true"
+verify_server_hostname="false"
 ui="false"
 tls=0
 bootstrap="0"
