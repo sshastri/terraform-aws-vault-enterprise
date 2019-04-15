@@ -62,6 +62,6 @@ variable "ssm_tls_key" {
   description = "SSM parameter name for Consul TKS key"
 }
 
-variable "kms_key_arn" {}
+variable "ssm_kms_key" {}
 
 variable "ssh_public_key" {}

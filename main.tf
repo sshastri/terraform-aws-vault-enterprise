@@ -15,11 +15,11 @@ variable "vault_private_subnet_ids" {
 
 variable "consul_ami_id" {}
 variable "vault_ami_id" {}
-variable "consul_additional_security_groups_ids" {
+variable "consul_additional_security_group_ids" {
     type = "list"
 }
 
-variable "vault_additional_security_groups_ids" {
+variable "vault_additional_security_group_ids" {
     type = "list"
 }
 

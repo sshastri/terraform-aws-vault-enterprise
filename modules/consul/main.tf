@@ -34,7 +34,7 @@ resource "aws_instance" "consul" {
   instance_type               = "${var.instance_type}"
   iam_instance_profile        = "${aws_iam_instance_profile.consul.id}"
   associate_public_ip_address = false
-  key_name                    = "${var.ssh_key_name}"
+  key_name                    = "${aws_key_pair.consul.key_name}"
   vpc_security_group_ids      = ["${concat(var.additional_sg_ids, list(aws_security_group.consul.id))}"]
   user_data                   = "${data.template_file.consul_user_data.rendered}"
   subnet_id                   = "${element(var.private_subnets, count.index)}"
@@ -173,7 +173,7 @@ data "template_file" "kms_iam_role_policy" {
   template = "${file("${path.module}/templates/kms_iam_role_policy.json.tpl")}"
 
   vars {
-    kms_key_arn = "${var.kms_key_arn}"
+    kms_key_arn = "${var.ssm_kms_key}"
   }
 }
 
