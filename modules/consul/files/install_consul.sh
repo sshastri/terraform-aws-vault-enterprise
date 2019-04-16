@@ -7,7 +7,7 @@ readonly CONSUL_INSTALL_DIR="/opt/consul"
 readonly CONSUL_BIN_DIR="$CONSUL_INSTALL_DIR/bin"
 readonly CONSUL_SCRIPTS_DIR="$CONSUL_INSTALL_DIR/scripts"
 readonly CONSUL_VAR_DIR="/var/opt/consul"
-readonly CONSUL_DATA_DIR="$CONSUL_VAR_DIR/consul"
+readonly CONSUL_DATA_DIR="$CONSUL_VAR_DIR/data"
 readonly TMP_DIR="/tmp/consul"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "$0")"
@@ -181,7 +181,7 @@ function configure_consul {
 # ${etc_dir}/config.hcl
 datacenter              = "${datacenter}"
 node_name               = "${INSTANCE_ID}"
-data_dir                = "${CONSUL_DATA_DIR}/data"
+data_dir                = "${CONSUL_DATA_DIR}"
 ui                      = ${ui}
 advertise_addr          = "${ip_addr}"
 server                  = ${server}
