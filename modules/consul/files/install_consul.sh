@@ -14,6 +14,7 @@ readonly SCRIPT_NAME="$(basename "$0")"
 
 readonly INSTANCE_ID="$(curl -s http://169.254.169.254/latest/meta-data/instance-id)"
 readonly AWS_REGION="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -c -r .region)"
+readonly AWS_AZ="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -c -r .availabilityZone)"
 
 function log {
   local -r level="$1"
@@ -68,7 +69,7 @@ function create_directories {
   local -r data_dir="$CONSUL_DATA_DIR"
 
   log "INFO" $func "Creating Consul directories..."
-  for i in "$config_dir" "$certs_dir" "$install_dir" "$bin_dir" "$scripts_dir" "$var_dir" "$data_dir"
+  for i in "$config_dir" "$certs_dir" "$var_dir" "$data_dir"
   do
     if [ ! -d "$i" ]
     then
@@ -197,6 +198,16 @@ performance {
   raft_multiplier = 1
 }
 EOF
+
+  if [ "$server" == "true" ]
+  then
+  cat <<EOF >> "$etc_dir/config.hcl"
+
+autopilot {
+  redundancy_zone_tag = "${AWS_AZ}"
+}
+EOF
+  fi
 
   [[ $tls -eq 1 ]] && configure_tls
   chmod 0640 "$etc_dir/config.hcl"
