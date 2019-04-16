@@ -51,7 +51,7 @@ module "consul" {
 
   ami_id                   = "${var.consul_ami_id}"
   cluster_name             = "${var.environment}"
-  cluster_size             = 5
+  cluster_size             = 6
   instance_type            = "m5.large"
   private_subnets          = ["${var.consul_private_subnet_ids}"]
   cluster_tag_key          = "consul_server_cluster"
