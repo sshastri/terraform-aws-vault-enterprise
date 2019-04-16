@@ -85,7 +85,7 @@ function create_directories {
     then
       mkdir -p "$i"
       chmod 0755 "$i"
-      chown "$username":"$username" "$i"
+      chown root:root "$i"
     fi
   done
 }
@@ -186,7 +186,7 @@ ui                      = ${ui}
 advertise_addr          = "${ip_addr}"
 server                  = ${server}
 bootstrap_expect        = ${bootstrap_expect}
-retry_join              = ["provider=aws tag_key=${tag_key} tag_value=${tag_value}"]
+retry_join              = ["provider=aws addr_type=private_v4 tag_key=${tag_key} tag_value=${tag_value}"]
 encrypt                 = "${encrypt_key}"
 encrypt_verify_incoming = true
 encrypt_verify_outgoing = true
