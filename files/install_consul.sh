@@ -12,6 +12,7 @@ readonly DEFAULT_IP_ADDRESS="$(ip address show $DEFAULT_NETWORK_INTERFACE | awk 
 
 readonly INSTANCE_ID="$(curl -s http://169.254.169.254/latest/meta-data/instance-id)"
 readonly AWS_REGION="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -c -r .region)"
+readonly AWS_AVAILABILITY_ZONE="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -c -r .availabilityZone)"
 
 source "$SCRIPT_PATH/funcs.sh"
 
@@ -109,6 +110,10 @@ addresses = {
 ports = {
   https    = 8501
   serf_wan = -1
+}
+
+autopilot = {
+  redundancy_zone_tag = "$AWS_AVAILABILITY_ZONE"
 }
 EOF
   fi

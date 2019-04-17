@@ -28,13 +28,22 @@ resource "aws_iam_role_policy" "consul" {
 }
 
 resource "aws_launch_configuration" "consul_asg" {
-  name_prefix          = "${var.cluster_name}-"
+  name_prefix          = "consul-${var.cluster_name}-"
   image_id             = "${var.ami_id}"
   instance_type        = "${var.instance_type}"
   iam_instance_profile = "${aws_iam_instance_profile.consul.id}"
   security_groups      = ["${concat(var.additional_sg_ids, list(aws_security_group.consul.id))}"]
   key_name             = "${aws_key_pair.consul.key_name}"
   user_data            = "${data.template_file.consul_user_data.rendered}"
+
+  lifecycle = {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_placement_group" "consul" {
+  name     = "consul-${var.cluster_name}"
+  strategy = "spread"
 }
 
 resource "aws_autoscaling_group" "consul_asg" {
@@ -46,6 +55,7 @@ resource "aws_autoscaling_group" "consul_asg" {
   min_size             = "${var.cluster_size}"
   max_size             = "${var.cluster_size}"
   desired_capacity     = "${var.cluster_size}"
+  placement_group      = "${aws_placement_group.consul.id}"
   termination_policies = ["${var.termination_policies}"]
 
   health_check_type         = "EC2"
@@ -63,7 +73,7 @@ resource "aws_autoscaling_group" "consul_asg" {
     value               = "consul-${var.cluster_name}"
     propagate_at_launch = true
   }
-  
+
   tag = {
     key                 = "${var.cluster_tag_key}"
     value               = "${var.cluster_tag_value}"

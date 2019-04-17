@@ -1,3 +1,5 @@
 .terraform/
+certs/
+*.pem
 *.tfstate
 *.tfstate.*

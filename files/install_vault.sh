@@ -88,9 +88,10 @@ listener "tcp" {
 }
 
 listener "tcp" {
-  address       = "$DEFAULT_IP_ADDRESS:8200"
-  tls_cert_file = "$CONFIG_PATH/certs/vault.pem"
-  tls_key_file  = "$CONFIG_PATH/certs/vault.key"
+  address                  = "$DEFAULT_IP_ADDRESS:8200"
+  tls_cert_file            = "$CONFIG_PATH/certs/vault.pem"
+  tls_key_file             = "$CONFIG_PATH/certs/vault.key"
+  tls_disable_client_certs = true
 }
 
 seal "awskms" {

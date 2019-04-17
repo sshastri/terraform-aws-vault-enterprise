@@ -90,6 +90,7 @@ variable "termination_policies" {
   type        = "string"
   default     = "Default"
 }
+
 variable "availability_zones" {
   type = "list"
 }

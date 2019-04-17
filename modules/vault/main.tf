@@ -37,19 +37,51 @@ resource "aws_iam_role_policy" "vault" {
   policy = "${file("${path.module}/files/iam_role_policy.json")}"
 }
 
-resource "aws_instance" "vault" {
-  ami                         = "${var.ami_id}"
-  count                       = "${var.cluster_size}"
-  instance_type               = "${var.instance_type}"
-  iam_instance_profile        = "${aws_iam_instance_profile.vault.id}"
-  associate_public_ip_address = false
-  key_name                    = "${aws_key_pair.vault.key_name}"
-  vpc_security_group_ids      = ["${concat(var.additional_sg_ids, list(aws_security_group.vault.id))}"]
-  user_data                   = "${data.template_file.vault_user_data.rendered}"
-  subnet_id                   = "${element(var.private_subnets, count.index)}"
+resource "aws_launch_configuration" "vault_asg" {
+  name_prefix          = "vault-${var.cluster_name}-"
+  image_id             = "${var.ami_id}"
+  instance_type        = "${var.instance_type}"
+  iam_instance_profile = "${aws_iam_instance_profile.vault.id}"
+  security_groups      = ["${concat(var.additional_sg_ids, list(aws_security_group.vault.id))}"]
+  key_name             = "${aws_key_pair.vault.key_name}"
+  user_data            = "${data.template_file.vault_user_data.rendered}"
 
-  tags = {
-    "Name" = "vault-${var.cluster_name}-${count.index}"
+  lifecycle = {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_placement_group" "vault" {
+  name     = "vault-${var.cluster_name}"
+  strategy = "spread"
+}
+
+resource "aws_autoscaling_group" "vault_asg" {
+  name_prefix          = "${var.cluster_name}"
+  launch_configuration = "${aws_launch_configuration.vault_asg.name}"
+  availability_zones   = ["${var.availability_zones}"]
+  vpc_zone_identifier  = ["${var.private_subnets}"]
+
+  min_size             = "${var.cluster_size}"
+  max_size             = "${var.cluster_size}"
+  desired_capacity     = "${var.cluster_size}"
+  placement_group      = "${aws_placement_group.vault.id}"
+  termination_policies = ["${var.termination_policies}"]
+
+  health_check_type         = "EC2"
+  health_check_grace_period = "${var.health_check_grace_period}"
+  wait_for_capacity_timeout = "${var.wait_for_capacity_timeout}"
+
+  enabled_metrics = ["${var.enabled_metrics}"]
+
+  lifecycle = {
+    create_before_destroy = true
+  }
+
+  tag = {
+    key                 = "Name"
+    value               = "vault-${var.cluster_name}"
+    propagate_at_launch = true
   }
 }
 
@@ -80,8 +112,56 @@ data "template_file" "vault_user_data" {
     ssm_parameter_vault_tls_cert_chain   = "${var.ssm_parameter_vault_tls_cert_chain}"
     ssm_parameter_vault_tls_key          = "${var.ssm_parameter_vault_tls_key}"
     install_script_hash                  = "${(var.packerized ? random_id.install_script.hex : "" )}"
-    vault_api_address                    = false
+    vault_api_address                    = "${aws_lb.vault_lb.dns_name}"
     vault_unseal_kms_key_arn             = "${aws_kms_key.vault.arn}"
+  }
+}
+
+resource "aws_lb_target_group" "vault_asg" {
+  name        = "vault-${var.cluster_name}"
+  port        = "${var.vault_api_port}"
+  protocol    = "TCP"
+  target_type = "instance"
+  vpc_id      = "${var.vpc_id}"
+
+  health_check = {
+    protocol            = "${var.health_check_protocol}"
+    path                = "${var.health_check_path}"
+    interval            = "${var.health_check_interval}"
+    healthy_threshold   = "${var.health_check_healthy_threshold}"
+    # unhealthy_threshold = "${var.health_check_unhealthy_threshold}"
+    # timeout             = "${var.health_check_timeout}"
+    # matcher             = "${var.health_check_success_codes}"
+  }
+
+  stickiness = {
+    type    = "lb_cookie"
+    enabled = false
+  }
+}
+
+resource "aws_autoscaling_attachment" "asg_attachment_vault" {
+  autoscaling_group_name = "${aws_autoscaling_group.vault_asg.id}"
+  alb_target_group_arn   = "${aws_lb_target_group.vault_asg.arn}"
+}
+
+resource "aws_lb" "vault_lb" {
+  name_prefix                      = "vault-"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  idle_timeout                     = "${var.idle_timeout}"
+  subnets                          = ["${var.private_subnets}"]
+}
+
+resource "aws_lb_listener" "vault_lb" {
+  load_balancer_arn = "${aws_lb.vault_lb.arn}"
+  port              = "${var.vault_api_port}"
+  protocol          = "TCP"
+
+  default_action = {
+    type             = "forward"
+    target_group_arn = "${aws_lb_target_group.vault_asg.arn}"
   }
 }
 
