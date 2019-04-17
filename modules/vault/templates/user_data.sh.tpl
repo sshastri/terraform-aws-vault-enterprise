@@ -7,7 +7,7 @@ TMP_PATH="/tmp/consul"
 # Set umask to set correct permissions in case the system is well hardened
 umask 022
 
-function log {
+log() {
   local -r level="$1"
   local -r func="$2"
   local -r message="$3"
@@ -16,7 +16,7 @@ function log {
   [ "$level" == "ERROR" ] && exit 1
 }
 
-function install_dependencies {
+install_dependencies() {
   local -r func="install_dependencies"
 
   # Check package manager type
@@ -52,38 +52,46 @@ function install_dependencies {
   esac
 }
 
-function copy_artifacts {
+copy_artifacts() {
   local -r func="copy_artifacts"
 
   if [ ! -d "$TMP_PATH" ]
   then
     mkdir $TMP_PATH
   fi
-  log "INFO" "$func" "Copying install script from S3..."
-  aws s3 cp "s3://${s3_bucket}/${s3_path}/install_vault.sh" "$TMP_PATH/install.sh"
-  chmod 0755 "$TMP_PATH/install.sh"
+  log "INFO" "$func" "Copying scripts from S3..."
+  aws s3 cp "s3://${s3_bucket}/${s3_path}/install_vault.sh" "$TMP_PATH/install_vault.sh"
+  chmod 0755 "$TMP_PATH/install_vault.sh"
 
-  log "INFO" "$func" "Copying consul binary from S3..."
-  aws s3 cp "s3://${s3_bucket}/${s3_path}/${consul_zip}" "$TMP_PATH/consul.zip"
+  aws s3 cp "s3://${s3_bucket}/${s3_path}/install_consul.sh" "$TMP_PATH/install_consul.sh"
+  chmod 0755 "$TMP_PATH/install_consul.sh"
+
+  aws s3 cp "s3://${s3_bucket}/${s3_path}/funcs.sh" "$TMP_PATH/funcs.sh"
+  chmod 0644 "$TMP_PATH/funcs.sh"
 
   log "INFO" "$func" "Copying vault binary from S3..."
   aws s3 cp "s3://${s3_bucket}/${s3_path}/${vault_zip}" "$TMP_PATH/vault.zip"
 }
 
 
-opts="-server -bootstrap-expect ${bootstrap_count} -tag-key ${tag_key} -tag-value ${tag_value} -enable-tls -ssm-encrypt-key ${ssm_encrypt_key} -ssm-tls-ca ${ssm_tls_ca} -ssm-tls-cert ${ssm_tls_cert} -ssm-tls-key ${ssm_tls_key}"
-if [ ${verify_server_hostname} -ne 0 ]
+consul_opts="--rejoin-tag-key ${rejoin_tag_key} --rejoin-tag-value ${rejoin_tag_value} --ssm-parameter-gossip-encryption-key ${ssm_parameter_gossip_encryption_key} --ssm-parameter-tls-ca ${ssm_parameter_consul_client_tls_ca} --ssm-parameter-tls-cert ${ssm_parameter_consul_client_tls_cert} --ssm-parameter-tls-key ${ssm_parameter_consul_client_tls_key}"
+vault_opts="--ssm-parameter-tls-cert-chain ${ssm_parameter_vault_tls_cert_chain} --ssm-parameter-tls-key ${ssm_parameter_vault_tls_key}"
+
+if [ ${vault_api_address} -ne 0]
 then
-  opts="$opts -verify-server-hostname"
+  vault_opts="--api-address ${vault_api_address} $vault_opts"
 fi
 
 if [ ${packerized} -eq 0 ]
 then
   install_dependencies
   copy_artifacts
-  "$TMP_PATH/install.sh" -install -configure $opts
+  "$TMP_PATH/install_consul.sh" --install --configure $consul_opts
+  #"$TMP_PATH/install_consul.sh" --install --configure $vault_opts
 else
-  /opt/consul/scripts/install.sh -configure $opts
+  /var/lib/consul/scripts/install.sh --configure $consul_opts
+  /var/lib/vault/scripts/install.sh --configure $vault_opts
 fi
+
 
 # ${install_script_hash}

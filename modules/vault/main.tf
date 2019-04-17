@@ -38,12 +38,15 @@ resource "aws_instance" "vault" {
   user_data                   = "${data.template_file.vault_user_data.rendered}"
   subnet_id                   = "${element(var.private_subnets, count.index)}"
 
-  tags = "${merge(map("Name", "vault-${var.cluster_name}-${count.index}"), map("${var.cluster_tag_key}", "${var.cluster_tag_value}"))}"
+  tags = {
+    "Name" = "vault-${var.cluster_name}-${count.index}"
+  }
 }
 
 resource "random_id" "install_script" {
   keepers = {
-    hash = "${sha256(file("${path.module}/files/install_vault.sh"))}"
+    install_hash = "${filemd5("${path.root}/files/install_vault.sh")}"
+    funcs_hash   = "${filemd5("${path.root}/files/funcs.sh")}"
   }
 
   byte_length = 8
@@ -53,25 +56,27 @@ data "template_file" "vault_user_data" {
   template = "${file("${path.module}/templates/user_data.sh.tpl")}"
 
   vars {
-    packerized             = "${var.packerized}"
-    s3_bucket              = "${var.s3_bucket}"
-    s3_path                = "${var.s3_path}"
-    bootstrap_count        = "${var.cluster_size}"
-    tag_key                = "${var.cluster_tag_key}"
-    tag_value              = "${var.cluster_tag_value}"
-    vault_zip              = "${var.vault_zip}"
-    ssm_encrypt_key        = "${var.ssm_encrypt_key}"
-    ssm_tls_ca             = "${var.ssm_tls_ca}"
-    ssm_tls_cert           = "${var.ssm_tls_cert}"
-    ssm_tls_key            = "${var.ssm_tls_key}"
-    verify_server_hostname = "${var.verify_server_hostname}"
-    install_script_hash    = "${(var.packerized ? random_id.install_script.hex : "" )}"
+    packerized                           = "${var.packerized}"
+    s3_bucket                            = "${var.s3_bucket}"
+    s3_path                              = "${var.s3_path}"
+    rejoin_tag_key                       = "${var.consul_rejoin_tag_key}"
+    rejoin_tag_value                     = "${var.consul_rejoin_tag_value}"
+    consul_zip                           = "${var.consul_zip}"
+    vault_zip                            = "${var.vault_zip}"
+    ssm_parameter_gossip_encryption_key  = "${var.ssm_parameter_gossip_encryption_key}"
+    ssm_parameter_consul_client_tls_ca   = "${var.ssm_parameter_consul_client_tls_ca}"
+    ssm_parameter_consul_client_tls_cert = "${var.ssm_parameter_consul_client_tls_cert}"
+    ssm_parameter_consul_client_tls_key  = "${var.ssm_parameter_consul_client_tls_key}"
+    ssm_parameter_vault_tls_cert_chain   = "${var.ssm_parameter_vault_tls_cert_chain}"
+    ssm_parameter_vault_tls_key          = "${var.ssm_parameter_vault_tls_key}"
+    install_script_hash                  = "${(var.packerized ? random_id.install_script.hex : "" )}"
+    vault_api_address                    = false
   }
 }
 
 resource "aws_security_group" "vault" {
   name        = "vault-${var.cluster_name}"
-  description = "Security group for communication to Consul servers"
+  description = "Security group for communication to Vault servers"
   vpc_id      = "${var.vpc_id}"
 
   tags = {
@@ -81,61 +86,31 @@ resource "aws_security_group" "vault" {
 
 resource "aws_security_group_rule" "vault_api_ingress" {
   type              = "ingress"
-  from_port         = 8500
-  to_port           = 8500
+  from_port         = 8200
+  to_port           = 8200
   protocol          = "tcp"
   cidr_blocks       = ["${var.api_ingress_cidr_blocks}"]
-  description       = "Consul API"
+  description       = "Vault API"
   security_group_id = "${aws_security_group.vault.id}"
 }
 
 resource "aws_security_group_rule" "vault_api_ingress_internal" {
   type              = "ingress"
-  from_port         = 8500
-  to_port           = 8500
+  from_port         = 8200
+  to_port           = 8200
   protocol          = "tcp"
   self              = true
-  description       = "Consul API internal"
+  description       = "Vault API internal"
   security_group_id = "${aws_security_group.vault.id}"
 }
 
-resource "aws_security_group_rule" "vault_rpc_ingress" {
+resource "aws_security_group_rule" "vault_cluster_ingress_internal" {
   type              = "ingress"
-  from_port         = 8300
-  to_port           = 8300
-  protocol          = "tcp"
-  cidr_blocks       = ["${var.rpc_ingress_cidr_blocks}"]
-  description       = "Consul RPC traffic"
-  security_group_id = "${aws_security_group.vault.id}"
-}
-
-resource "aws_security_group_rule" "vault_rpc_ingress_internal" {
-  type              = "ingress"
-  from_port         = 8300
-  to_port           = 8300
+  from_port         = 8201
+  to_port           = 8201
   protocol          = "tcp"
   self              = true
-  description       = "Consul internal RPC traffic"
-  security_group_id = "${aws_security_group.vault.id}"
-}
-
-resource "aws_security_group_rule" "vault_serf_ingress" {
-  type              = "ingress"
-  from_port         = 8301
-  to_port           = 8301
-  protocol          = "tcp"
-  cidr_blocks       = ["${var.serf_ingress_cidr_blocks}"]
-  description       = "Consul serf traffic"
-  security_group_id = "${aws_security_group.vault.id}"
-}
-
-resource "aws_security_group_rule" "vault_serf_ingress_internal" {
-  type              = "ingress"
-  from_port         = 8301
-  to_port           = 8301
-  protocol          = "tcp"
-  self              = true
-  description       = "Consul internal serf traffic"
+  description       = "Vault internal cluster traffic"
   security_group_id = "${aws_security_group.vault.id}"
 }
 
@@ -145,16 +120,8 @@ resource "aws_security_group_rule" "vault_egress" {
   to_port           = 0
   protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
-  description       = "Consul egress traffic"
+  description       = "Vault egress traffic"
   security_group_id = "${aws_security_group.vault.id}"
-}
-
-resource "aws_s3_bucket_object" "install_vault" {
-  count  = "${var.packerized ? 0 : 1}"
-  bucket = "${var.s3_bucket}"
-  key    = "${var.s3_path}/install_vault.sh"
-  source = "${path.module}/files/install_vault.sh"
-  etag   = "${filemd5("${path.module}/files/install_vault.sh")}"
 }
 
 resource "aws_iam_role_policy" "s3" {

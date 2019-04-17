@@ -30,11 +30,18 @@ variable "s3_bucket" {}
 variable "vpc_id" {}
 variable "ssm_kms_key" {}
 variable "ssm_parameter_path" {}
-variable "ssm_consul_tls_ca_parameter" {}
-variable "ssm_consul_tls_cert_parameter" {}
-variable "ssm_consul_tls_key_parameter" {}
-variable "ssm_consul_encrypt_key_parameter" {}
+variable "ssm_parameter_consul_tls_ca" {}
+variable "ssm_parameter_consul_tls_cert" {}
+variable "ssm_parameter_consul_tls_key" {}
+variable "ssm_parameter_consul_gossip_encryption_key" {}
+variable "ssm_parameter_consul_client_tls_ca" {}
+variable "ssm_parameter_consul_client_tls_cert" {}
+variable "ssm_parameter_consul_client_tls_key" {}
+
+variable "ssm_parameter_vault_tls_cert_chain" {}
+variable "ssm_parameter_vault_tls_key" {}
 variable "consul_cluster_size" {}
+variable "vault_cluster_size" {}
 
 #############
 # Providers #
@@ -75,36 +82,42 @@ module "consul" {
   s3_path                             = "install_files"
   consul_zip                          = "consul_enterprise_premium-1.4.4.zip"
   ssm_kms_key                         = "${var.ssm_kms_key}"
-  ssm_parameter_tls_ca                = "${var.ssm_consul_tls_ca_parameter}"
-  ssm_parameter_tls_cert              = "${var.ssm_consul_tls_cert_parameter}"
-  ssm_parameter_tls_key               = "${var.ssm_consul_tls_key_parameter}"
-  ssm_parameter_gossip_encryption_key = "${var.ssm_consul_encrypt_key_parameter}"
-  ssh_public_key                      = "${var.consul_ssh_public_key}"
   ssm_parameter_path                  = "${var.ssm_parameter_path}"
+  ssm_parameter_gossip_encryption_key = "${var.ssm_parameter_consul_gossip_encryption_key}"
+  ssm_parameter_tls_ca                = "${var.ssm_parameter_consul_tls_ca}"
+  ssm_parameter_tls_cert              = "${var.ssm_parameter_consul_tls_cert}"
+  ssm_parameter_tls_key               = "${var.ssm_parameter_consul_tls_key}"
+  ssh_public_key                      = "${var.consul_ssh_public_key}"
 }
 
-# module "vault" {
-#   source = "./modules/vault"
+module "vault" {
+  source = "./modules/vault"
 
-#   ami_id                   = "${var.vault_ami_id}"
-#   cluster_name             = "${var.environment}"
-#   cluster_size             = 3
-#   instance_type            = "m5.large"
-#   private_subnets          = "${var.vault_private_subnet_ids}"
-#   consul_cluster_tag_key   = "consul_server_cluster"
-#   consul_cluster_tag_value = "${var.environment}"
-#   packerized               = false
-#   api_ingress_cidr_blocks  = ["0.0.0.0/0"]
-#   additional_sg_ids        = ["${var.vault_additional_security_group_ids}"]
-#   vpc_id                   = "${var.vpc_id}"
-#   s3_bucket                = "${var.s3_bucket}"
-#   s3_path                  = "install_files"
-#   vault_zip                = "vault_enterprise_premium-1.0.3.zip"
-#   ssm_kms_key              = "${var.ssm_kms_key}"
-#   ssm_parameter_path       = "${var.ssm_parameter_path}"
-#   ssm_encrypt_key          = "${var.ssm_consul_encrypt_key_parameter}"
-#   ssh_public_key           = "${var.vault_ssh_public_key}"
-# }
+  ami_id                               = "${var.vault_ami_id}"
+  cluster_name                         = "${var.environment}"
+  cluster_size                         = "${var.vault_cluster_size}"
+  instance_type                        = "m5.large"
+  private_subnets                      = "${var.vault_private_subnet_ids}"
+  consul_rejoin_tag_key                = "consul_server_cluster"
+  consul_rejoin_tag_value              = "${var.environment}"
+  packerized                           = false
+  api_ingress_cidr_blocks              = ["0.0.0.0/0"]
+  additional_sg_ids                    = ["${var.vault_additional_security_group_ids}"]
+  vpc_id                               = "${var.vpc_id}"
+  s3_bucket                            = "${var.s3_bucket}"
+  s3_path                              = "install_files"
+  consul_zip                           = "consul_enterprise_premium-1.4.4.zip"
+  vault_zip                            = "vault_enterprise_premium-1.0.3.zip"
+  ssm_kms_key                          = "${var.ssm_kms_key}"
+  ssm_parameter_path                  = "${var.ssm_parameter_path}"
+  ssm_parameter_gossip_encryption_key  = "${var.ssm_parameter_consul_gossip_encryption_key}"
+  ssm_parameter_consul_client_tls_ca   = "${var.ssm_parameter_consul_client_tls_ca}"
+  ssm_parameter_consul_client_tls_cert = "${var.ssm_parameter_consul_client_tls_cert}"
+  ssm_parameter_consul_client_tls_key  = "${var.ssm_parameter_consul_client_tls_key}"
+  ssm_parameter_vault_tls_cert_chain   = "${var.ssm_parameter_vault_tls_cert_chain}"
+  ssm_parameter_vault_tls_key          = "${var.ssm_parameter_vault_tls_key}"
+  ssh_public_key                       = "${var.vault_ssh_public_key}"
+}
 
 ###########
 # Outputs #
@@ -112,4 +125,8 @@ module "consul" {
 
 output "consul_ip_addresses" {
   value = "${module.consul.ip_addresses}"
+}
+
+output "vault_ip_addresses" {
+  value = "${module.vault.ip_addresses}"
 }
