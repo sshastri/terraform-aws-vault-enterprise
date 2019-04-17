@@ -8,7 +8,7 @@
                 "kms:Decrypt",
                 "kms:DescribeKey"
             ],
-      "Resource": ["${kms_arn}"]
+      "Resource": "${kms_key_arn}"
     }
   ]
 }

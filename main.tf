@@ -32,7 +32,6 @@ variable "ssm_consul_tls_ca_parameter" {}
 variable "ssm_consul_tls_cert_parameter" {}
 variable "ssm_consul_tls_key_parameter" {}
 variable "ssm_consul_encrypt_key_parameter" {}
-variable "consul_verify_server_hostname" {}
 
 #############
 # Providers #
@@ -46,8 +45,15 @@ provider "aws" {
 # Modules #
 ###########
 
+module "s3" {
+  source = "modules/s3"
+
+  s3_bucket                = "${var.s3_bucket}"
+  s3_path                  = "install_files"
+}
+
 module "consul" {
-  source = "./modules/consul"
+  source = "modules/consul"
 
   ami_id                   = "${var.consul_ami_id}"
   cluster_name             = "${var.environment}"
@@ -66,13 +72,12 @@ module "consul" {
   s3_path                  = "install_files"
   consul_zip               = "consul_enterprise_premium-1.4.4.zip"
   ssm_kms_key              = "${var.ssm_kms_key}"
-  ssm_tls_ca               = "${var.ssm_consul_tls_ca_parameter}"
-  ssm_tls_cert             = "${var.ssm_consul_tls_cert_parameter}"
-  ssm_tls_key              = "${var.ssm_consul_tls_key_parameter}"
-  ssm_encrypt_key          = "${var.ssm_consul_encrypt_key_parameter}"
+  ssm_parameter_tls_ca               = "${var.ssm_consul_tls_ca_parameter}"
+  ssm_parameter_tls_cert             = "${var.ssm_consul_tls_cert_parameter}"
+  ssm_parameter_tls_key              = "${var.ssm_consul_tls_key_parameter}"
+  ssm_parameter_gossip_encryption_key          = "${var.ssm_consul_encrypt_key_parameter}"
   ssh_public_key           = "${var.consul_ssh_public_key}"
   ssm_parameter_path       = "${var.ssm_parameter_path}"
-  verify_server_hostname   = "${var.consul_verify_server_hostname}"
 }
 
 # module "vault" {

@@ -43,7 +43,7 @@ resource "aws_instance" "consul" {
 
 resource "random_id" "install_script" {
   keepers = {
-    hash = "${sha256(file("${path.module}/files/install_consul.sh"))}"
+    hash = "${sha256(file("${path.module}/../../files/install_consul.sh"))}"
   }
 
   byte_length = 8
@@ -53,19 +53,18 @@ data "template_file" "consul_user_data" {
   template = "${file("${path.module}/templates/user_data.sh.tpl")}"
 
   vars {
-    packerized             = "${var.packerized}"
-    s3_bucket              = "${var.s3_bucket}"
-    s3_path                = "${var.s3_path}"
-    bootstrap_count        = "${var.cluster_size}"
-    tag_key                = "${var.cluster_tag_key}"
-    tag_value              = "${var.cluster_tag_value}"
-    consul_zip             = "${var.consul_zip}"
-    ssm_encrypt_key        = "${var.ssm_encrypt_key}"
-    ssm_tls_ca             = "${var.ssm_tls_ca}"
-    ssm_tls_cert           = "${var.ssm_tls_cert}"
-    ssm_tls_key            = "${var.ssm_tls_key}"
-    verify_server_hostname = "${var.verify_server_hostname}"
-    install_script_hash    = "${(var.packerized ? random_id.install_script.hex : "" )}"
+    packerized                          = "${var.packerized}"
+    s3_bucket                           = "${var.s3_bucket}"
+    s3_path                             = "${var.s3_path}"
+    bootstrap_expect                    = "${var.cluster_size}"
+    rejoin_tag_key                      = "${var.cluster_tag_key}"
+    rejoin_tag_value                    = "${var.cluster_tag_value}"
+    consul_zip                          = "${var.consul_zip}"
+    ssm_parameter_gossip_encryption_key = "${var.ssm_parameter_gossip_encryption_key}"
+    ssm_parameter_tls_ca                = "${var.ssm_parameter_tls_ca}"
+    ssm_parameter_tls_cert              = "${var.ssm_parameter_tls_cert}"
+    ssm_parameter_tls_key               = "${var.ssm_parameter_tls_key}"
+    install_script_hash                 = "${(var.packerized ? random_id.install_script.hex : "" )}"
   }
 }
 
@@ -147,14 +146,6 @@ resource "aws_security_group_rule" "consul_egress" {
   cidr_blocks       = ["0.0.0.0/0"]
   description       = "Consul egress traffic"
   security_group_id = "${aws_security_group.consul.id}"
-}
-
-resource "aws_s3_bucket_object" "install_consul" {
-  count  = "${var.packerized ? 0 : 1}"
-  bucket = "${var.s3_bucket}"
-  key    = "${var.s3_path}/install_consul.sh"
-  source = "${path.module}/files/install_consul.sh"
-  etag   = "${filemd5("${path.module}/files/install_consul.sh")}"
 }
 
 resource "aws_iam_role_policy" "s3" {

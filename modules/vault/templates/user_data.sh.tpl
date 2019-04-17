@@ -59,12 +59,15 @@ function copy_artifacts {
   then
     mkdir $TMP_PATH
   fi
-  log "INFO" "$func" "Copying consul install script from S3..."
-  aws s3 cp "s3://${s3_bucket}/${s3_path}/install_consul.sh" "$TMP_PATH/install.sh"
+  log "INFO" "$func" "Copying install script from S3..."
+  aws s3 cp "s3://${s3_bucket}/${s3_path}/install_vault.sh" "$TMP_PATH/install.sh"
   chmod 0755 "$TMP_PATH/install.sh"
 
   log "INFO" "$func" "Copying consul binary from S3..."
   aws s3 cp "s3://${s3_bucket}/${s3_path}/${consul_zip}" "$TMP_PATH/consul.zip"
+
+  log "INFO" "$func" "Copying vault binary from S3..."
+  aws s3 cp "s3://${s3_bucket}/${s3_path}/${vault_zip}" "$TMP_PATH/vault.zip"
 }
 
 

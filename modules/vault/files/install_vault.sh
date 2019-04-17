@@ -167,28 +167,57 @@ EOF
 
 function configure_consul {
   local -r func="configure_consul"
+  local -r consul_gossip_encryption_key="$(get_ssm_parameter $ssm_parameter_consul_gossip_encryption_key)"
 
-  log "INFO" $func "Creating Consul configuration file..."
+  if [[ $consul_server -eq 0 ]]
+  then
+    log "INFO" $func "Configuring Consul in client mode..."
 
-  cat <<EOF > "$etc_dir/config.hcl"
-# ${etc_dir}/config.hcl
-datacenter              = "${datacenter}"
-node_name               = "${INSTANCE_ID}"
-data_dir                = "${CONSUL_DATA_DIR}"
-ui                      = ${ui}
-advertise_addr          = "${ip_addr}"
-server                  = ${server}
-bootstrap_expect        = ${bootstrap_expect}
-retry_join              = ["provider=aws addr_type=private_v4 tag_key=${tag_key} tag_value=${tag_value}"]
-encrypt                 = "${encrypt_key}"
+    cat <<EOF > "$CONSUL_CONFIG_PATH/config.hcl"
+datacenter              = "$consul_datacenter"
+node_name               = "$INSTANCE_ID"
+data_dir                = "$CONSUL_DATA_PATH"
+advertise_addr          = "$DEFAULT_IP_ADDRESS"
+retry_join              = ["provider=aws addr_type=private_v4 tag_key=$consul_rejoin_tag_key tag_value=$consul_rejoin_tag_value"]
+encrypt                 = "$consul_gossip_encryption_key"
 encrypt_verify_incoming = true
 encrypt_verify_outgoing = true
-ca_file                 = "${certs_dir}/ca.pem"
-cert_file               = "${certs_dir}/consul.pem"
-key_file                = "${certs_dir}/consul.key"
+ca_file                 = "$CONSUL_CONFIG_PATH/certs/ca.pem"
+cert_file               = "$CONSUL_CONFIG_PATH/certs/consul.pem"
+key_file                = "$CONSUL_CONFIG_PATH/certs/consul.key"
 verify_incoming         = true
 verify_outgoing         = true
-verify_server_hostname  = ${verify_server_hostname}
+verify_server_hostname  = true
+
+performance = {
+  raft_multiplier  = 1
+}
+
+ports = {
+  serf_wan = -1
+}
+EOF
+  else
+    log "INFO" $func "Configuring Consul in server mode..."
+    assert_not_empty "--consul-bootstrap-expect" "$consul_bootstrap_expect"
+
+    cat <<EOF > "$CONSUL_CONFIG_PATH/config.hcl"
+datacenter              = "$consul_datacenter"
+node_name               = "$INSTANCE_ID"
+data_dir                = "$CONSUL_DATA_PATH"
+advertise_addr          = "$DEFAULT_IP_ADDRESS"
+server                  = true
+bootstrap_expect        = $consul_bootstrap_expect
+retry_join              = ["provider=aws addr_type=private_v4 tag_key=$consul_rejoin_tag_key tag_value=$consul_rejoin_tag_value"]
+encrypt                 = "$consul_gossip_encryption_key"
+encrypt_verify_incoming = true
+encrypt_verify_outgoing = true
+ca_file                 = "$CONSUL_CONFIG_PATH/certs/ca.pem"
+cert_file               = "$CONSUL_CONFIG_PATH/certs/consul.pem"
+key_file                = "$CONSUL_CONFIG_PATH/certs/consul.key"
+verify_incoming         = true
+verify_outgoing         = true
+verify_server_hostname  = true
 
 performance = {
   raft_multiplier  = 1
@@ -197,7 +226,7 @@ performance = {
 # All services bind to 127.0.0.1 by default
 # Set HTTPS to listen on the default network interface
 addresses = {
-  https = "0.0.0.0"
+  https = "$DEFAULT_IP_ADDRESS"
 }
 
 ports = {
@@ -205,10 +234,14 @@ ports = {
   serf_wan = -1
 }
 EOF
+  fi
 
-  log "INFO" $func "Configuring Consul TLS..."
+  chmod 0640 "$CONSUL_CONFIG_PATH/config.hcl"
+  chown consul:consul "$CONSUL_CONFIG_PATH/config.hcl"
+
+  log "INFO" $func "Retrieving Consul TLS certificates..."
   assert_not_empty "--ssm-parameter-consul-tls-ca" "$ssm_parameter_consul_tls_ca"
-  assert_not_empty "--ssm-parameter-consul-tls-certificate" "$ssm_parameter_consul_tls_certificate"
+  assert_not_empty "--ssm-parameter-consul-tls-cert" "$ssm_parameter_consul_tls_cert"
   assert_not_empty "--ssm-parameter-consul-tls-key" "$ssm_parameter_consul_tls_key"
 
   if [ ! -f "$CONSUL_CONFIG_PATH/certs/ca.pem" ]
@@ -223,7 +256,7 @@ EOF
 
   if [ ! -f "$CONSUL_CONFIG_PATH/certs/vault.pem" ]
   then
-    get_ssm_parameter $ssm_parameter_consul_tls_certificate | base64 -d > "$CONSUL_CONFIG_PATH/certs/consul.pem"
+    get_ssm_parameter $ssm_parameter_consul_tls_cert | base64 -d > "$CONSUL_CONFIG_PATH/certs/consul.pem"
     chown consul:consul "$CONSUL_CONFIG_PATH/certs/consul.pem"
     chmod 0640 "$CONSUL_CONFIG_PATH/certs/consul.pem"
     log "INFO" $func "The TLS certificate file path $CONSUL_CONFIG_PATH/certs/consul.pem has been created..."
@@ -240,16 +273,14 @@ EOF
   else
     log "INFO" $func "The TLS key file path $CONSUL_CONFIG_PATH/certs/vault.key already exists. Doing nothing..."
   fi
-  chmod 0640 "$CONSUL_CONFIG_PATH/config.hcl"
-  chown consul:consul "$CONSUL_CONFIG_PATH/config.hcl"
 
+  log "INFO" $func "Starting Consul service..."
   systemctl enable consul
   systemctl restart consul
 }
 
 function configure_vault {
   local -r func="configure_vault"
-  local -r gossip_encryption_key="$(get_ssm_parameter $ssm_parameter_consul_gossip_encryption_key)"
 
   log "INFO" $func "Creating Vault configuration file..."
 
@@ -261,6 +292,7 @@ cluster_addr = "https://$DEFAULT_IP_ADDRESS:8201"
 storage "consul" {
   address = "127.0.0.1:8500"
   path    = "vault"
+  # token   = "{{ consul_acl_token }}"
 }
 
 listener "tcp" {
@@ -270,21 +302,58 @@ listener "tcp" {
 
 listener "tcp" {
   address       = "$DEFAULT_IP_ADDRESS:8200"
-  tls_cert_file = "$VAULT_CERTIFICATES_PATH/vault.pem"
-  tls_key_file  = "$VAULT_CERTIFICATES_PATH/vault.key"
+  tls_cert_file = "$VAULT_CONFIG_PATH/certs/vault.pem"
+  tls_key_file  = "$VAULT_CONFIG_PATH/certs/vault.key"
 }
 EOF
 
   chmod 0640 "$VAULT_CONFIG_PATH/config.hcl"
   chown $username:$username "$VAULT_CONFIG_PATH/config.hcl"
 
+  log "INFO" $func "Retrieving Vault TLS certificates..."
+  assert_not_empty "--ssm-parameter-vault-tls-cert-chain" "$ssm_parameter_vault_tls_cert_chain"
+  assert_not_empty "--ssm-parameter-vault-tls-key" "$ssm_parameter_vault_tls_key"
+
+  if [ ! -f "$VAULT_CONFIG_PATH/certs/ca.pem" ]
+  then
+    get_ssm_parameter $ssm_parameter_vault_tls_ca | base64 -d > "$VAULT_CONFIG_PATH/certs/ca.pem"
+    chown vault:vault "$VAULT_CONFIG_PATH/certs/ca.pem"
+    chmod 0640 "$VAULT_CONFIG_PATH/certs/ca.pem"
+    log "INFO" $func "The TLS CA chain file path $VAULT_CONFIG_PATH/certs/ca.pem has been created..."
+  else
+    log "INFO" $func "The TLS CA chain file path $VAULT_CONFIG_PATH/certs/ca.pem already exists. Doing nothing..."
+  fi
+
+  if [ ! -f "$VAULT_CONFIG_PATH/certs/vault.pem" ]
+  then
+    get_ssm_parameter $ssm_parameter_vault_tls_cert | base64 -d > "$VAULT_CONFIG_PATH/certs/vault.pem"
+    chown vault:vault "$VAULT_CONFIG_PATH/certs/vault.pem"
+    chmod 0640 "$VAULT_CONFIG_PATH/certs/vault.pem"
+    log "INFO" $func "The TLS certificate file path $VAULT_CONFIG_PATH/certs/vault.pem has been created..."
+  else
+    log "INFO" $func "The TLS certificate file path $VAULT_CONFIG_PATH/certs/vault.pem already exists. Doing nothing..."
+  fi
+
+  if [ ! -f "$VAULT_CONFIG_PATH/certs/vault.key" ]
+  then
+    get_ssm_parameter $ssm_parameter_vault_tls_key | base64 -d > "$VAULT_CONFIG_PATH/certs/vault.key"
+    chown vault:vault "$VAULT_CONFIG_PATH/certs/vault.key"
+    chmod 0600 "$VAULT_CONFIG_PATH/certs/vault.key"
+    log "INFO" $func "The TLS key file path $VAULT_CONFIG_PATH/certs/vault.key has been created..."
+  else
+    log "INFO" $func "The TLS key file path $VAULT_CONFIG_PATH/certs/vault.key already exists. Doing nothing..."
+  fi
+
+  log "INFO" $func "Starting Vault service..."
   systemctl enable vault
   systemctl restart vault
 }
 
 install=0
 configure=0
-api_address="$DEFAULT_IP_ADDRESS"
+consul_datacenter="dc1"
+consul_server=0
+vault_api_address="$DEFAULT_IP_ADDRESS"
 while [[ $# -gt 0 ]]
 do
   key="$1"
@@ -296,6 +365,18 @@ do
     --configure)
     configure=1
     shift
+    ;;
+    --consul-datacenter)
+    consul_datacenter="$2"
+    shift 2
+    ;;
+    --consul-server)
+    consul_server=1
+    shift
+    ;;
+    --consul-bootstrap-expect)
+    consul_bootstrap_expect="$2"
+    shift 2
     ;;
     --consul-rejoin-tag-key)
     consul_rejoin_tag_key="$2"
@@ -309,12 +390,24 @@ do
     ssm_parameter_consul_tls_ca="$2"
     shift 2
     ;;
-    --ssm-parameter-consul-tls-certificate)
-    ssm_parameter_consul_tls_certificate="$2"
+    --ssm-parameter-consul-tls-cert)
+    ssm_parameter_consul_tls_cert="$2"
     shift 2
     ;;
     --ssm-parameter-consul-tls-key)
     ssm_parameter_consul_tls_key="$2"
+    shift 2
+    ;;
+    --vault-api-address)
+    vault_api_address="$2"
+    shift 2
+    ;;
+    --ssm-parameter-vault-tls-cert-chain)
+    ssm_parameter_vault_tls_cert_chain="$2"
+    shift 2
+    ;;
+    --ssm-parameter-vault-tls-key)
+    ssm_parameter_vault_tls_key="$2"
     shift 2
     ;;
     *)
@@ -326,11 +419,15 @@ done
 if [[ ($install -eq 1) && ($configure -eq 1) ]]
 then
   install_consul
+  install_vault
   configure_consul
+  configure_vault
 elif [[ $install -eq 1 ]]
 then
   install_consul
+  install_vault
 elif [[ $configure -eq 1 ]]
 then
   configure_consul
+  configure_vault
 fi

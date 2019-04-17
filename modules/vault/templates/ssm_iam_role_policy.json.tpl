@@ -5,10 +5,11 @@
             "Effect":"Allow",
             "Action":[
                 "ssm:DescribeParameters",
+                "ssm:GetParameter",
                 "ssm:GetParameters"
             ],
             "Resource": [
-                "arn:aws:ssm:${aws_region}:${account_id}:parameter/${ssm_base_path}/vault/*"
+                "${ssm_parameter_arn}/*"
             ]
         }
     ]
