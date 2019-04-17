@@ -2,7 +2,7 @@
 
 export PATH="/usr/local/bin:$PATH"
 
-TMP_PATH="/tmp/consul"
+TMP_PATH="/tmp/install_files"
 
 # Set umask to set correct permissions in case the system is well hardened
 umask 022
@@ -60,14 +60,18 @@ copy_artifacts() {
     mkdir $TMP_PATH
   fi
   log "INFO" "$func" "Copying scripts from S3..."
+  
+  aws s3 cp "s3://${s3_bucket}/${s3_path}/install_consul.sh" "$TMP_PATH/install_consul.sh"
+  chmod 0755 "$TMP_PATH/install_consul.sh"
+  
   aws s3 cp "s3://${s3_bucket}/${s3_path}/install_vault.sh" "$TMP_PATH/install_vault.sh"
   chmod 0755 "$TMP_PATH/install_vault.sh"
 
-  aws s3 cp "s3://${s3_bucket}/${s3_path}/install_consul.sh" "$TMP_PATH/install_consul.sh"
-  chmod 0755 "$TMP_PATH/install_consul.sh"
-
   aws s3 cp "s3://${s3_bucket}/${s3_path}/funcs.sh" "$TMP_PATH/funcs.sh"
   chmod 0644 "$TMP_PATH/funcs.sh"
+
+  log "INFO" "$func" "Copying consul binary from S3..."
+  aws s3 cp "s3://${s3_bucket}/${s3_path}/${consul_zip}" "$TMP_PATH/consul.zip"
 
   log "INFO" "$func" "Copying vault binary from S3..."
   aws s3 cp "s3://${s3_bucket}/${s3_path}/${vault_zip}" "$TMP_PATH/vault.zip"
@@ -87,7 +91,7 @@ then
   install_dependencies
   copy_artifacts
   "$TMP_PATH/install_consul.sh" --install --configure $consul_opts
-  #"$TMP_PATH/install_consul.sh" --install --configure $vault_opts
+  #"$TMP_PATH/install_vault.sh" --install --configure $vault_opts
 else
   /var/lib/consul/scripts/install.sh --configure $consul_opts
   /var/lib/vault/scripts/install.sh --configure $vault_opts

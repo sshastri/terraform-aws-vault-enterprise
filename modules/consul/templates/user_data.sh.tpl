@@ -2,7 +2,7 @@
 
 export PATH="/usr/local/bin:$PATH"
 
-TMP_PATH="/tmp/consul"
+TMP_PATH="/tmp/install_files"
 
 # Set umask to set correct permissions in case the system is well hardened
 umask 022

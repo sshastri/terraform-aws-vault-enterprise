@@ -4,7 +4,6 @@ readonly CONFIG_PATH="/etc/consul"
 readonly INSTALL_PATH="/usr/local/bin"
 readonly DATA_PATH="/var/lib/consul"
 
-readonly TMP_PATH="/tmp/consul"
 readonly SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "$0")"
 
@@ -27,7 +26,7 @@ install_consul() {
   chown consul:consul "$CONFIG_PATH" "$CONFIG_PATH/certs" "$DATA_PATH"
 
   log "INFO" $func "Unpacking Consul..."
-  cd "$INSTALL_PATH" && unzip -qu "$TMP_PATH/consul.zip"
+  cd "$INSTALL_PATH" && unzip -qu "$SCRIPT_PATH/consul.zip"
   chown consul:consul consul
   chmod 0755 consul
 

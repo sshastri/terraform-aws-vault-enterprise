@@ -3,7 +3,6 @@
 readonly CONFIG_PATH="/etc/vault"
 readonly INSTALL_PATH="/usr/local/bin"
 
-readonly TMP_PATH="/tmp/vault"
 readonly SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "$0")"
 
@@ -19,18 +18,12 @@ install_vault() {
   create_user vault $CONFIG_PATH
 
   log "INFO" $func "Creating Vault directories..."
-  for i in "$CONFIG_PATH" "$CONFIG_PATH/certs"
-  do
-    if [ ! -d "$i" ]
-    then
-      mkdir "$i"
-      chmod 0750 "$i"
-      chown vault:vault "$i"
-    fi
-  done
+  mkdir "$CONFIG_PATH" "$CONFIG_PATH/certs"
+  chmod 0750 "$CONFIG_PATH" "$CONFIG_PATH/certs"
+  chown vault:vault "$CONFIG_PATH" "$CONFIG_PATH/certs"
 
   log "INFO" $func "Unpacking Vault..."
-  cd "$INSTALL_PATH" && unzip -qu "$TMP_PATH/vault.zip"
+  cd "$INSTALL_PATH" && unzip -qu "$SCRIPT_PATH/vault.zip"
   chown vault:vault vault
   chmod 0755 vault
   setcap cap_ipc_lock=+ep vault
