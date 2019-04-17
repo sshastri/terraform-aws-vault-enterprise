@@ -46,5 +46,5 @@ get_ssm_parameter() {
   local -r parameter="$2"
   
   log "INFO" $func "Retrieving SSM parameter $parameter..."
-  aws --region "$region" ssm get-parameter --name "$parameter" --with-description | jq --raw-output '.Parameter.Value'
+  aws --region "$region" ssm get-parameter --name "$parameter" --with-decryption | jq --raw-output '.Parameter.Value'
 }

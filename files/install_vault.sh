@@ -3,7 +3,7 @@
 readonly CONFIG_PATH="/etc/vault"
 readonly INSTALL_PATH="/usr/local/bin"
 
-readonly TMP_PATH="$(mktemp -d -t vault.XXXXXXXXXX)"
+readonly TMP_PATH="/tmp/vault"
 readonly SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "$0")"
 
@@ -11,7 +11,7 @@ readonly DEFAULT_IP_ADDRESS="$(ip address show $(ls -1 /sys/class/net | grep -v 
 readonly INSTANCE_ID="$(curl -s http://169.254.169.254/latest/meta-data/instance-id)"
 readonly AWS_REGION="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -c -r .region)"
 
-source "funcs.sh"
+source "$SCRIPT_PATH/funcs.sh"
 
 install_vault() {
   local -r func="install_vault"

@@ -2,7 +2,7 @@
 
 export PATH="/usr/local/bin:$PATH"
 
-TMP_PATH="$(mktemp -d -t consul.XXXXXXXXXX)"
+TMP_PATH="/tmp/consul"
 
 # Set umask to set correct permissions in case the system is well hardened
 umask 022
@@ -59,16 +59,19 @@ copy_artifacts() {
   then
     mkdir $TMP_PATH
   fi
-  log "INFO" "$func" "Copying consul install script from S3..."
+  log "INFO" "$func" "Copying scripts from S3..."
   aws s3 cp "s3://${s3_bucket}/${s3_path}/install_consul.sh" "$TMP_PATH/install.sh"
   chmod 0755 "$TMP_PATH/install.sh"
+
+  aws s3 cp "s3://${s3_bucket}/${s3_path}/funcs.sh" "$TMP_PATH/funcs.sh"
+  chmod 0755 "$TMP_PATH/funcs.sh"
 
   log "INFO" "$func" "Copying consul binary from S3..."
   aws s3 cp "s3://${s3_bucket}/${s3_path}/${consul_zip}" "$TMP_PATH/consul.zip"
 }
 
 
-opts="--server --bootstrap-expect ${bootstrap_expect} --rejoin-tag-key ${rejoin_tag_key} --tag-value ${rejoin_tag_value} --ssm-parameter-gossip-encryption-key ${ssm_parameter_gossip_encryption_key} --ssm-parameter-tls-ca ${ssm_parameter_tls_ca} --ssm-paremter-tls-cert ${ssm_parameter_tls_cert} --ssm-tls-key ${ssm_parameter_tls_key}"
+opts="--server --bootstrap-expect ${bootstrap_expect} --rejoin-tag-key ${rejoin_tag_key} --rejoin-tag-value ${rejoin_tag_value} --ssm-parameter-gossip-encryption-key ${ssm_parameter_gossip_encryption_key} --ssm-parameter-tls-ca ${ssm_parameter_tls_ca} --ssm-parameter-tls-cert ${ssm_parameter_tls_cert} --ssm-parameter-tls-key ${ssm_parameter_tls_key}"
 
 if [ ${packerized} -eq 0 ]
 then

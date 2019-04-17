@@ -4,7 +4,7 @@ readonly CONFIG_PATH="/etc/consul"
 readonly INSTALL_PATH="/usr/local/bin"
 readonly DATA_PATH="/var/lib/consul"
 
-readonly TMP_PATH="$(mktemp -d -t consul.XXXXXXXXXX)"
+readonly TMP_PATH="/tmp/consul"
 readonly SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "$0")"
 
@@ -14,7 +14,7 @@ readonly DEFAULT_IP_ADDRESS="$(ip address show $DEFAULT_NETWORK_INTERFACE | awk 
 readonly INSTANCE_ID="$(curl -s http://169.254.169.254/latest/meta-data/instance-id)"
 readonly AWS_REGION="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -c -r .region)"
 
-source "funcs.sh"
+source "$SCRIPT_PATH/funcs.sh"
 
 install_consul() {
   local -r func="install_consul"
@@ -79,7 +79,7 @@ verify_outgoing         = true
 verify_server_hostname  = true
 
 performance = {
-  raft_multiplier  = 1
+  raft_multiplier = 1
 }
 
 EOF
@@ -108,7 +108,7 @@ addresses = {
 }
 
 ports = {
-  https = 8501
+  https    = 8501
   serf_wan = -1
 }
 EOF
@@ -191,6 +191,10 @@ do
     ;;
     --rejoin-tag-value)
     rejoin_tag_value="$2"
+    shift 2
+    ;;
+    --ssm-parameter-gossip-encryption-key)
+    ssm_parameter_gossip_encryption_key="$2"
     shift 2
     ;;
     --ssm-parameter-tls-ca)

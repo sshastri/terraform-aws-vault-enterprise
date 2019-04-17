@@ -45,8 +45,9 @@ variable "consul_zip" {}
 
 variable "ssm_parameter_path" {
   description = "Base path for Consul SSM parameters"
-  default = "/"
+  default     = "/"
 }
+
 variable "ssm_parameter_gossip_encryption_key" {
   description = "SSM parameter name for Consul gossip encryption key, a 16-byte base64 encoded string"
 }
@@ -54,6 +55,7 @@ variable "ssm_parameter_gossip_encryption_key" {
 variable "ssm_parameter_tls_ca" {
   description = "SSM parameter name for Consul TLS CA chain"
 }
+
 variable "ssm_parameter_tls_cert" {
   description = "SSM parameter name for Consul TLS certificate"
 }

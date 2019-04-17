@@ -59,7 +59,7 @@ data "template_file" "vault_user_data" {
     bootstrap_count        = "${var.cluster_size}"
     tag_key                = "${var.cluster_tag_key}"
     tag_value              = "${var.cluster_tag_value}"
-    vault_zip             = "${var.vault_zip}"
+    vault_zip              = "${var.vault_zip}"
     ssm_encrypt_key        = "${var.ssm_encrypt_key}"
     ssm_tls_ca             = "${var.ssm_tls_ca}"
     ssm_tls_cert           = "${var.ssm_tls_cert}"
