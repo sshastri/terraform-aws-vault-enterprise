@@ -63,3 +63,9 @@ variable "ssm_parameter_vault_tls_key" {}
 variable "ssm_kms_key" {}
 
 variable "ssh_public_key" {}
+variable "kms_deletion_days" {
+  default = 7
+}
+variable "kms_key_rotate" {
+  default = true
+}

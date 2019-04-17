@@ -5,6 +5,16 @@ terraform {
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+resource "aws_kms_key" "vault" {
+  description             = "Vault KMS key"
+  deletion_window_in_days = "${var.kms_deletion_days}"
+  enable_key_rotation     = "${var.kms_key_rotate}"
+
+  tags {
+    Name = "vault-kms-${var.cluster_name}"
+  }
+}
+
 resource "aws_key_pair" "vault" {
   key_name   = "vault-server-${var.cluster_name}"
   public_key = "${var.ssh_public_key}"
@@ -71,6 +81,7 @@ data "template_file" "vault_user_data" {
     ssm_parameter_vault_tls_key          = "${var.ssm_parameter_vault_tls_key}"
     install_script_hash                  = "${(var.packerized ? random_id.install_script.hex : "" )}"
     vault_api_address                    = false
+    vault_unseal_kms_key_arn             = "${aws_kms_key.vault.arn}"
   }
 }
 
@@ -150,7 +161,8 @@ data "template_file" "kms_iam_role_policy" {
   template = "${file("${path.module}/templates/kms_iam_role_policy.json.tpl")}"
 
   vars {
-    kms_key_arn = "${var.ssm_kms_key}"
+    ssm_kms_key_arn   = "${var.ssm_kms_key}"
+    vault_kms_key_arn = "${aws_kms_key.vault.arn}"
   }
 }
 

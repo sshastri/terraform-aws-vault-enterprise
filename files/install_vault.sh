@@ -92,6 +92,11 @@ listener "tcp" {
   tls_cert_file = "$CONFIG_PATH/certs/vault.pem"
   tls_key_file  = "$CONFIG_PATH/certs/vault.key"
 }
+
+seal "awskms" {
+  region     = "$AWS_REGION"
+  kms_key_id = "$unseal_kms_key_arn"
+}
 EOF
 
   chmod 0640 "$CONFIG_PATH/config.hcl"
@@ -151,6 +156,10 @@ do
     ;;
     --ssm-parameter-tls-key)
     ssm_parameter_tls_key="$2"
+    shift 2
+    ;;
+    --unseal-kms-key-arn)
+    unseal_kms_key_arn="$2"
     shift 2
     ;;
     *)

@@ -78,7 +78,7 @@ copy_artifacts() {
 }
 
 consul_opts="--rejoin-tag-key ${rejoin_tag_key} --rejoin-tag-value ${rejoin_tag_value} --ssm-parameter-gossip-encryption-key ${ssm_parameter_gossip_encryption_key} --ssm-parameter-tls-ca ${ssm_parameter_consul_client_tls_ca} --ssm-parameter-tls-cert ${ssm_parameter_consul_client_tls_cert} --ssm-parameter-tls-key ${ssm_parameter_consul_client_tls_key}"
-vault_opts="--ssm-parameter-tls-cert-chain ${ssm_parameter_vault_tls_cert_chain} --ssm-parameter-tls-key ${ssm_parameter_vault_tls_key}"
+vault_opts="--ssm-parameter-tls-cert-chain ${ssm_parameter_vault_tls_cert_chain} --ssm-parameter-tls-key ${ssm_parameter_vault_tls_key} --unseal-kms-key-arn ${vault_unseal_kms_key_arn}"
 
 if [ ${vault_api_address} -ne 0]
 then
