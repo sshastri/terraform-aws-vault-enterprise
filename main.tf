@@ -42,6 +42,9 @@ variable "ssm_parameter_vault_tls_cert_chain" {}
 variable "ssm_parameter_vault_tls_key" {}
 variable "consul_cluster_size" {}
 variable "vault_cluster_size" {}
+variable "availability_zones" {
+  type = "list"
+}
 
 #############
 # Providers #
@@ -69,6 +72,7 @@ module "consul" {
   cluster_name                        = "${var.environment}"
   cluster_size                        = "${var.consul_cluster_size}"
   instance_type                       = "m5.large"
+  availability_zones                  = ["${var.availability_zones}"]
   private_subnets                     = ["${var.consul_private_subnet_ids}"]
   cluster_tag_key                     = "consul_server_cluster"
   cluster_tag_value                   = "${var.environment}"
@@ -122,10 +126,6 @@ module "vault" {
 ###########
 # Outputs #
 ###########
-
-output "consul_ip_addresses" {
-  value = "${module.consul.ip_addresses}"
-}
 
 output "vault_ip_addresses" {
   value = "${module.vault.ip_addresses}"

@@ -27,18 +27,48 @@ resource "aws_iam_role_policy" "consul" {
   policy = "${file("${path.module}/files/iam_role_policy.json")}"
 }
 
-resource "aws_instance" "consul" {
-  ami                         = "${var.ami_id}"
-  count                       = "${var.cluster_size}"
-  instance_type               = "${var.instance_type}"
-  iam_instance_profile        = "${aws_iam_instance_profile.consul.id}"
-  associate_public_ip_address = false
-  key_name                    = "${aws_key_pair.consul.key_name}"
-  vpc_security_group_ids      = ["${concat(var.additional_sg_ids, list(aws_security_group.consul.id))}"]
-  user_data                   = "${data.template_file.consul_user_data.rendered}"
-  subnet_id                   = "${element(var.private_subnets, count.index)}"
+resource "aws_launch_configuration" "consul_asg" {
+  name_prefix          = "${var.cluster_name}-"
+  image_id             = "${var.ami_id}"
+  instance_type        = "${var.instance_type}"
+  iam_instance_profile = "${aws_iam_instance_profile.consul.id}"
+  security_groups      = ["${concat(var.additional_sg_ids, list(aws_security_group.consul.id))}"]
+  key_name             = "${aws_key_pair.consul.key_name}"
+  user_data            = "${data.template_file.consul_user_data.rendered}"
+}
 
-  tags = "${merge(map("Name", "consul-${var.cluster_name}-${count.index}"), map("${var.cluster_tag_key}", "${var.cluster_tag_value}"))}"
+resource "aws_autoscaling_group" "consul_asg" {
+  name_prefix          = "${var.cluster_name}"
+  launch_configuration = "${aws_launch_configuration.consul_asg.name}"
+  availability_zones   = ["${var.availability_zones}"]
+  vpc_zone_identifier  = ["${var.private_subnets}"]
+
+  min_size             = "${var.cluster_size}"
+  max_size             = "${var.cluster_size}"
+  desired_capacity     = "${var.cluster_size}"
+  termination_policies = ["${var.termination_policies}"]
+
+  health_check_type         = "EC2"
+  health_check_grace_period = "${var.health_check_grace_period}"
+  wait_for_capacity_timeout = "${var.wait_for_capacity_timeout}"
+
+  enabled_metrics = ["${var.enabled_metrics}"]
+
+  lifecycle = {
+    create_before_destroy = true
+  }
+
+  tag = {
+    key                 = "Name"
+    value               = "consul-${var.cluster_name}"
+    propagate_at_launch = true
+  }
+  
+  tag = {
+    key                 = "${var.cluster_tag_key}"
+    value               = "${var.cluster_tag_value}"
+    propagate_at_launch = true
+  }
 }
 
 resource "random_id" "install_script" {

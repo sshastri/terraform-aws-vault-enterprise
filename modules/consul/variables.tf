@@ -67,3 +67,29 @@ variable "ssm_parameter_tls_key" {
 variable "ssm_kms_key" {}
 
 variable "ssh_public_key" {}
+
+variable "health_check_grace_period" {
+  description = "Time, in seconds, after instance comes into service before checking health."
+  default     = 300
+}
+
+variable "wait_for_capacity_timeout" {
+  description = "A maximum duration that Terraform should wait for ASG instances to be healthy before timing out. Setting this to '0' causes Terraform to skip all Capacity Waiting behavior."
+  type        = "string"
+  default     = "10m"
+}
+
+variable "enabled_metrics" {
+  description = "List of autoscaling group metrics to enable."
+  type        = "list"
+  default     = []
+}
+
+variable "termination_policies" {
+  description = "A list of policies to decide how the instances in the auto scale group should be terminated. The allowed values are OldestInstance, NewestInstance, OldestLaunchConfiguration, ClosestToNextInstanceHour, Default."
+  type        = "string"
+  default     = "Default"
+}
+variable "availability_zones" {
+  type = "list"
+}
