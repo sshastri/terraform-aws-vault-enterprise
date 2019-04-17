@@ -95,25 +95,15 @@ listener "tcp" {
 EOF
 
   chmod 0640 "$CONFIG_PATH/config.hcl"
-  chown $username:$username "$CONFIG_PATH/config.hcl"
+  chown vault:vault "$CONFIG_PATH/config.hcl"
 
   log "INFO" $func "Retrieving Vault TLS certificates..."
   assert_not_empty "--ssm-parameter-tls-cert-chain" "$ssm_parameter_tls_cert_chain"
   assert_not_empty "--ssm-parameter-tls-key" "$ssm_parameter_tls_key"
 
-  if [ ! -f "$CONFIG_PATH/certs/ca.pem" ]
-  then
-    get_ssm_parameter $AWS_REGION $ssm_parameter_tls_ca | base64 -d > "$CONFIG_PATH/certs/ca.pem"
-    chown vault:vault "$CONFIG_PATH/certs/ca.pem"
-    chmod 0640 "$CONFIG_PATH/certs/ca.pem"
-    log "INFO" $func "The TLS CA chain file path $CONFIG_PATH/certs/ca.pem has been created..."
-  else
-    log "INFO" $func "The TLS CA chain file path $CONFIG_PATH/certs/ca.pem already exists. Doing nothing..."
-  fi
-
   if [ ! -f "$CONFIG_PATH/certs/vault.pem" ]
   then
-    get_ssm_parameter $AWS_REGION $ssm_parameter_tls_cert | base64 -d > "$CONFIG_PATH/certs/vault.pem"
+    get_ssm_parameter $AWS_REGION $ssm_parameter_tls_cert_chain | base64 -d > "$CONFIG_PATH/certs/vault.pem"
     chown vault:vault "$CONFIG_PATH/certs/vault.pem"
     chmod 0640 "$CONFIG_PATH/certs/vault.pem"
     log "INFO" $func "The TLS certificate file path $CONFIG_PATH/certs/vault.pem has been created..."

@@ -77,7 +77,6 @@ copy_artifacts() {
   aws s3 cp "s3://${s3_bucket}/${s3_path}/${vault_zip}" "$TMP_PATH/vault.zip"
 }
 
-
 consul_opts="--rejoin-tag-key ${rejoin_tag_key} --rejoin-tag-value ${rejoin_tag_value} --ssm-parameter-gossip-encryption-key ${ssm_parameter_gossip_encryption_key} --ssm-parameter-tls-ca ${ssm_parameter_consul_client_tls_ca} --ssm-parameter-tls-cert ${ssm_parameter_consul_client_tls_cert} --ssm-parameter-tls-key ${ssm_parameter_consul_client_tls_key}"
 vault_opts="--ssm-parameter-tls-cert-chain ${ssm_parameter_vault_tls_cert_chain} --ssm-parameter-tls-key ${ssm_parameter_vault_tls_key}"
 
@@ -91,11 +90,10 @@ then
   install_dependencies
   copy_artifacts
   "$TMP_PATH/install_consul.sh" --install --configure $consul_opts
-  #"$TMP_PATH/install_vault.sh" --install --configure $vault_opts
+  "$TMP_PATH/install_vault.sh" --install --configure $vault_opts
 else
   /var/lib/consul/scripts/install.sh --configure $consul_opts
   /var/lib/vault/scripts/install.sh --configure $vault_opts
 fi
-
 
 # ${install_script_hash}
