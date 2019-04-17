@@ -2,12 +2,12 @@
 
 export PATH="/usr/local/bin:$PATH"
 
-TMP_PATH="/tmp/consul"
+TMP_PATH="$(mktemp -d -t consul.XXXXXXXXXX)"
 
 # Set umask to set correct permissions in case the system is well hardened
 umask 022
 
-function log {
+log() {
   local -r level="$1"
   local -r func="$2"
   local -r message="$3"
@@ -16,7 +16,7 @@ function log {
   [ "$level" == "ERROR" ] && exit 1
 }
 
-function install_dependencies {
+install_dependencies() {
   local -r func="install_dependencies"
 
   # Check package manager type
@@ -52,7 +52,7 @@ function install_dependencies {
   esac
 }
 
-function copy_artifacts {
+copy_artifacts() {
   local -r func="copy_artifacts"
 
   if [ ! -d "$TMP_PATH" ]
@@ -68,19 +68,15 @@ function copy_artifacts {
 }
 
 
-opts="-server -bootstrap-expect ${bootstrap_count} -tag-key ${tag_key} -tag-value ${tag_value} -enable-tls -ssm-encrypt-key ${ssm_encrypt_key} -ssm-tls-ca ${ssm_tls_ca} -ssm-tls-cert ${ssm_tls_cert} -ssm-tls-key ${ssm_tls_key}"
-if [ ${verify_server_hostname} -ne 0 ]
-then
-  opts="$opts -verify-server-hostname"
-fi
+opts="--server --bootstrap-expect ${bootstrap_expect} --rejoin-tag-key ${rejoin_tag_key} --tag-value ${rejoin_tag_value} --ssm-parameter-gossip-encryption-key ${ssm_parameter_gossip_encryption_key} --ssm-parameter-tls-ca ${ssm_parameter_tls_ca} --ssm-paremter-tls-cert ${ssm_parameter_tls_cert} --ssm-tls-key ${ssm_parameter_tls_key}"
 
 if [ ${packerized} -eq 0 ]
 then
   install_dependencies
   copy_artifacts
-  "$TMP_PATH/install.sh" -install -configure $opts
+  "$TMP_PATH/install.sh" --install --configure $opts
 else
-  /opt/consul/scripts/install.sh -configure $opts
+  /opt/consul/scripts/install.sh --configure $opts
 fi
 
 # ${install_script_hash}

@@ -43,7 +43,7 @@ resource "aws_instance" "consul" {
 
 resource "random_id" "install_script" {
   keepers = {
-    hash = "${sha256(file("${path.module}/../../files/install_consul.sh"))}"
+    hash = "${sha256(file("${path.root}/files/install_consul.sh"))}"
   }
 
   byte_length = 8
